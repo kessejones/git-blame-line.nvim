@@ -11,6 +11,7 @@ function M.createExtMarkOpts(text)
     local opts = {
         virt_text = {{ text, "SpecialComment" }},
         virt_text_pos = "eol",
+        hl_mode = "combine"
     }
 
     return opts
