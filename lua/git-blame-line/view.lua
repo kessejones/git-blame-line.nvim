@@ -1,15 +1,18 @@
-local M = { }
+local config = require('git-blame-line.config')
 
-local paddingLeft = 5
+local view = {
+    is_visible = false,
+    __ns_id = nil,
+}
 
-function M.padLeft(text, length)
-    return string.rep(' ', length) .. text
+function view.pad_left(text)
+    return string.rep(' ', config.view.left_padding_size) .. text
 end
 
-function M.createExtMarkOpts(text)
-    text = M.padLeft(text, paddingLeft)
+function view.create_ext_mark_opts(text)
+    text = view.pad_left(text)
     local opts = {
-        virt_text = {{ text, "SpecialComment" }},
+        virt_text = {{ text, "Comment" }},
         virt_text_pos = "eol",
         hl_mode = "combine"
     }
@@ -17,19 +20,19 @@ function M.createExtMarkOpts(text)
     return opts
 end
 
-function M.showVirtualText(params)
-    vim.api.nvim_buf_set_extmark(0, M.__nsId, params.line[1] -1, 0, params.opts) 
-    M.isVisible = true 
+function view.show_virtual_text(params)
+    vim.api.nvim_buf_set_extmark(0, view.__ns_id, params.line[1] -1, 0, params.opts)
+    view.is_visible = true
 end
 
-function M.clear()
-    vim.api.nvim_buf_clear_namespace(0, M.__nsId, 0, -1)
-    M.isVisible = false
+function view.clear()
+    vim.api.nvim_buf_clear_namespace(0, view.__ns_id, 0, -1)
+    view.is_visible = false
 end
 
-function M.setup()
-    M.isVisible = false
-    M.__nsId = vim.api.nvim_create_namespace('GitBlameLine')
+function view.init()
+    view.is_visible = false
+    view.__ns_id = vim.api.nvim_create_namespace('GitBlameLine')
 end
 
-return M
+return view

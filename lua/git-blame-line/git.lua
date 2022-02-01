@@ -1,40 +1,43 @@
-local M = { }
+local strf = string.format
+local config = require('git-blame-line.config')
 
-local defaultMessage = "Not committed yet"
-local gitShowFormat = '%an - %ar - %s'
+local git = {
+    group = nil
+}
 
-local getUntrackedFiles = function()
-    local cmd = "git ls-files --others --exclude-standard"
-    local result = vim.fn.system(cmd)
+local function run_cmd(cmd)
+    return vim.fn.system(table.concat(cmd, ' '))
+end
+
+local untracked_files = function()
+    local result = run_cmd({ 'git', 'ls-files', '--others', '--exclude-standard' })
     return vim.split(result, '%s')
 end
 
-local getGitBlameText = function(file, line)
-    local blame = vim.fn.system(string.format('git blame -c -L %d,%d %s', line[1], line[1], file))
+local run_git_blame = function(file, line)
+    local blame = run_cmd({ 'git', 'blame', '-c', '-L', strf('%d,%d', line[1], line[1]), file })
     if string.match(blame, "no such path") then
         return ""
     end
 
     local hash = vim.split(blame, '%s')[1]
     if hash == '000000000' then
-        return defaultMessage 
+        return config.git.default_message
     end
 
-    local cmd = string.format('git show %s --format="%s"', hash, gitShowFormat)
-    local gitShowResult = vim.fn.system(cmd)
-
-    local text = vim.split(gitShowResult, '\n')[1]
+    local git_show_result = run_cmd({ 'git', 'show', hash, strf('--format="%s"', config.git.blame_format) })
+    local text = vim.split(git_show_result, '\n')[1]
     if text:find("fatal") then
-        return "" 
+        return ""
     end
 
     return text
 end
 
-local isNewFile = function(file)
-    local untrackedFiles = getUntrackedFiles()
+local is_new_file = function(file)
+    local _untracked_files = untracked_files()
 
-    for _, p in ipairs(untrackedFiles) do
+    for _, p in ipairs(_untracked_files) do
         if p == file then
             return true
         end
@@ -42,11 +45,11 @@ local isNewFile = function(file)
     return false
 end
 
-function M.blameText(file, line)
-    if isNewFile(file) then
-        return defaultMessage
+function git.blame_line(file, line)
+    if is_new_file(file) then
+        return config.git.default_text
     end
-    return getGitBlameText(file, line)
+    return run_git_blame(file, line)
 end
 
-return M
+return git
