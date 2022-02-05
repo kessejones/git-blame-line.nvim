@@ -1,9 +1,7 @@
 local strf = string.format
 local config = require("git-blame-line.config")
 
-local git = {
-    group = nil,
-}
+local git = {}
 
 local function run_cmd(cmd)
     return vim.fn.system(table.concat(cmd, " "))
