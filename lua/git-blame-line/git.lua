@@ -47,7 +47,7 @@ end
 
 function git.blame_line(file, line)
     if is_new_file(file) then
-        return config.git.default_text
+        return config.git.default_message
     end
     return run_git_blame(file, line)
 end
