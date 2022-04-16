@@ -2,17 +2,23 @@ local git = require("git-blame-line.git")
 local view = require("git-blame-line.view")
 local config = require("git-blame-line.config")
 
+local create_cmd = vim.api.nvim_create_user_command
+local create_autocmd = vim.api.nvim_create_autocmd
+
 local git_blame_line = {}
 
-function git_blame_line.register_commands()
-    vim.api.nvim_exec([[command GitBlameLineShow :lua require'git-blame-line'.blame()]], false)
-    vim.api.nvim_exec([[command GitBlameLineClear :lua require'git-blame-line'.clear()]], false)
-    vim.api.nvim_exec([[command GitBlameLineToggle :lua require'git-blame-line'.toggle()]], false)
+local function register_commands()
+    create_cmd("GitBlameLineShow", git_blame_line.blame, {})
+    create_cmd("GitBlameLineClear", git_blame_line.clear, {})
+    create_cmd("GitBlameLineToggle", git_blame_line.toggle, {})
+end
 
+local function register_autocmds()
     if config.view.enable_cursor_hold then
-        vim.cmd([[autocmd CursorHold * :GitBlameLineShow]])
-        vim.cmd([[autocmd CursorMoved * :GitBlameLineClear]])
-        vim.cmd([[autocmd CursorMovedI * :GitBlameLineClear]])
+        local group = vim.api.nvim_create_augroup("GiBlameLine", { clear = true })
+        create_autocmd("CursorHold", { callback = git_blame_line.blame, group = group })
+        create_autocmd("CursorMoved", { callback = git_blame_line.clear, group = group })
+        create_autocmd("CursorMovedI", { callback = git_blame_line.clear, group = group })
     end
 end
 
@@ -52,7 +58,8 @@ function git_blame_line.setup(opts)
     config.init(opts)
     view.init()
 
-    git_blame_line.register_commands()
+    register_commands()
+    register_autocmds()
 end
 
 return git_blame_line
