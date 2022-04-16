@@ -14,12 +14,13 @@ end
 
 local run_git_blame = function(file, line)
     local blame = run_cmd({ "git", "blame", "-c", "-L", strf("%d,%d", line[1], line[1]), file })
+
     if string.match(blame, "no such path") then
         return ""
     end
 
     local hash = vim.split(blame, "%s")[1]
-    if hash == "000000000" then
+    if hash == "00000000" then
         return config.git.default_message
     end
 
