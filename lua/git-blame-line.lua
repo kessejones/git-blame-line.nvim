@@ -14,11 +14,12 @@ local function register_commands()
 end
 
 local function register_autocmds()
+    local group = vim.api.nvim_create_augroup("GiBlameLine", { clear = true })
+    create_autocmd("CursorMoved", { callback = git_blame_line.clear, group = group })
+    create_autocmd("CursorMovedI", { callback = git_blame_line.clear, group = group })
+
     if config.view.enable_cursor_hold then
-        local group = vim.api.nvim_create_augroup("GiBlameLine", { clear = true })
         create_autocmd("CursorHold", { callback = git_blame_line.blame, group = group })
-        create_autocmd("CursorMoved", { callback = git_blame_line.clear, group = group })
-        create_autocmd("CursorMovedI", { callback = git_blame_line.clear, group = group })
     end
 end
 
