@@ -1,54 +1,77 @@
-local strf = string.format
 local config = require("git-blame-line.config")
+local utils = require("git-blame-line.utils")
 
 local git = {}
 
-local function run_cmd(cmd)
-    return vim.fn.system(table.concat(cmd, " "))
+local function run_job(cmd)
+    local output = {}
+    local job_id = vim.fn.jobstart(cmd, {
+        stdout_buffered = true,
+        on_stdout = function(_, data)
+            if #data > 0 and data[1] ~= "" then
+                output = data
+            end
+        end,
+    })
+
+    vim.fn.jobwait({ job_id })
+
+    return output
 end
 
-local untracked_files = function()
-    local result = run_cmd({ "git", "ls-files", "--others", "--exclude-standard" })
-    return vim.split(result, "%s")
+function git.untracked_files()
+    return run_job({ "git", "ls-files", "--others", "--exclude-standard" })
 end
 
-local run_git_blame = function(file, line)
-    local blame = run_cmd({ "git", "blame", "-c", "-L", strf("%d,%d", line[1], line[1]), file })
+function git.show(hash, format)
+    return run_job({ "git", "show", hash, string.format('--format="%s"', format) })
+end
 
-    if string.match(blame, "no such path") then
-        return ""
+function git.blame(filename, line_start, line_end)
+    return run_job({ "git", "blame", "-c", "-L", string.format("%d,%d", line_start, line_end), filename })
+end
+
+function git.blame_line(filename, line)
+    local untracked_files = git.untracked_files()
+    if utils.contains(untracked_files, filename) then
+        return {
+            error = false,
+            message = config.git.default_message,
+        }
     end
 
+    local blame_result = git.blame(filename, line, line)
+    local blame = table.concat(blame_result)
+    if string.match(blame, "no such path") then
+        return {
+            error = true,
+            message = "",
+        }
+    end
     local hash = vim.split(blame, "%s")[1]
     if hash == "00000000" then
-        return config.git.default_message
+        return {
+            error = false,
+            message = config.git.default_message,
+        }
     end
 
-    local git_show_result = run_cmd({ "git", "show", hash, strf('--format="%s"', config.git.blame_format) })
-    local text = vim.split(git_show_result, "\n")[1]
-    if text:find("fatal") then
-        return ""
+    local git_show_result = git.show(hash, config.git.blame_format)
+    local text = vim.fn.trim(git_show_result[1], '"')
+
+    if text:find("fatal") or text == "" then
+        return {
+            error = true,
+            hash = hash,
+            message = text,
+        }
     end
 
-    return text
-end
-
-local is_new_file = function(file)
-    local _untracked_files = untracked_files()
-
-    for _, p in ipairs(_untracked_files) do
-        if p == file then
-            return true
-        end
-    end
-    return false
-end
-
-function git.blame_line(file, line)
-    if is_new_file(file) then
-        return config.git.default_message
-    end
-    return run_git_blame(file, line)
+    return {
+        error = false,
+        hash = hash,
+        message = text,
+    }
 end
 
 return git

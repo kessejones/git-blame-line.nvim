@@ -32,13 +32,18 @@ function git_blame_line.blame()
 
     local line = vim.api.nvim_win_get_cursor(0)
     local current_file = vim.fn.expand("%")
-    local blame_text = git.blame_line(current_file, line)
-    local opts = view.create_ext_mark_opts(blame_text)
+    local blame_data = git.blame_line(current_file, line[1])
+
+    if blame_data.error then
+        vim.notify("git-blame-line: " .. blame_data.message)
+        return
+    end
+
+    local opts = view.create_ext_mark_opts(blame_data.message)
     local params = {
         line = line,
         opts = opts,
     }
-
     view.show_virtual_text(params)
 end
 
@@ -51,6 +56,31 @@ function git_blame_line.toggle()
         git_blame_line.clear()
     else
         git_blame_line.blame()
+    end
+end
+
+function git_blame_line.open_diffview()
+    local ft = vim.fn.expand("%:h:t")
+    if ft == "" or ft == "bin" then
+        return
+    end
+
+    git_blame_line.clear()
+
+    local line = vim.api.nvim_win_get_cursor(0)
+    local current_file = vim.fn.expand("%")
+    local blame_data = git.blame_line(current_file, line[1])
+
+    if blame_data.error then
+        vim.notify("git-blame-line: " .. blame_data.message)
+        return
+    end
+
+    local ok, diffview = pcall(require, "diffview")
+    if ok then
+        diffview.open(blame_data.hash)
+    else
+        vim.notify("git-blame-line: diffview not found")
     end
 end
 
